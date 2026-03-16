@@ -342,6 +342,9 @@ class AutoClickerApp(ctk.CTk):
         self.y_entry.delete(0, "end")
         self.y_entry.insert(0, str(int(y)))
 
+        # Immediately append to the table
+        self._add_position()
+
         self.pick_btn.configure(text="Pick", state="normal")
         self.deiconify()  # Restore the window
         self.lift()
