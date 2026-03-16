@@ -50,7 +50,7 @@ class AutoClickerApp(ctk.CTk):
         self._hotkey_listener = None     # pynput global hotkey listener
         
         # Settings
-        self.auto_append_var = ctk.BooleanVar(value=True)
+        self.auto_append_var = ctk.BooleanVar(value=False)
         self._options_window = None
 
         # ── Build the UI ──────────────────────────────────────────────
