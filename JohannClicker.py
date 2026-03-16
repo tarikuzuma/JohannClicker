@@ -15,6 +15,7 @@ import threading
 import time
 import json
 import os
+import sys
 import ctypes
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -27,6 +28,16 @@ from pynput import mouse, keyboard
 # ──────────────────────────────────────────────────────────────────────
 # Application
 # ──────────────────────────────────────────────────────────────────────
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 class AutoClickerApp(ctk.CTk):
     """Main application window for the AutoClicker."""
 
@@ -51,8 +62,8 @@ class AutoClickerApp(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         # ── Logo / Icon setup ─────────────────────────────────────────
-        self.logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
-        self.icon_path = os.path.join(os.path.dirname(__file__), "logo.ico")
+        self.logo_path = get_resource_path("logo.png")
+        self.icon_path = get_resource_path("logo.ico")
         
         if os.path.exists(self.logo_path):
             try:
