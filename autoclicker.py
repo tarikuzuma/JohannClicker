@@ -247,6 +247,9 @@ class AutoClickerApp(ctk.CTk):
         self.tree.bind("<ButtonRelease-1>", self._on_drag_drop)
         self.tree.bind("<B1-Motion>", self._on_drag_motion)
 
+        # ── Double Click to Edit ──────────────────────────────────────
+        self.tree.bind("<Double-1>", self._on_double_click)
+
     def _configure_treeview_style(self):
         """Apply a clean style to the ttk Treeview."""
         style = ttk.Style()
@@ -409,6 +412,40 @@ class AutoClickerApp(ctk.CTk):
             # Focus the new item
             self.tree.selection_set(new_item)
             self.tree.see(new_item)
+
+    def _on_double_click(self, event):
+        """Identify the row double-clicked and open edit dialog."""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self._edit_delay(item)
+
+    def _edit_delay(self, item):
+        """Open a modern dialog to edit the delay of the selected row."""
+        # Get current values
+        vals = list(self.tree.item(item, "values"))
+        current_delay = vals[3]
+
+        # Use CTkInputDialog for a modern look
+        dialog = ctk.CTkInputDialog(
+            text=f"Enter new delay (ms) for this click:",
+            title="Edit Delay"
+        )
+        # Position dialog somewhat near the app
+        dialog.geometry(f"+{self.winfo_x() + 100}+{self.winfo_y() + 100}")
+        
+        new_delay_str = dialog.get_input()
+
+        if new_delay_str is not None:
+            try:
+                new_delay = int(new_delay_str)
+                if new_delay < 0:
+                    raise ValueError
+                
+                # Update the tree item
+                vals[3] = str(new_delay)
+                self.tree.item(item, values=vals)
+            except ValueError:
+                messagebox.showerror("Input Error", "Delay must be a non-negative integer (ms).")
 
     # ==================================================================
     # Drag and Drop Reordering
