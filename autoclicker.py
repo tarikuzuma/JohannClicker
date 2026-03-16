@@ -47,6 +47,10 @@ class AutoClickerApp(ctk.CTk):
         self._pick_kbd_listener = None   # pynput keyboard listener for Pick
         self._pick_overlay = None       # Tooltip window during Pick
         self._hotkey_listener = None     # pynput global hotkey listener
+        
+        # Settings
+        self.auto_append_var = ctk.BooleanVar(value=True)
+        self._options_window = None
 
         # ── Build the UI ──────────────────────────────────────────────
         self._build_left_panel()
@@ -116,16 +120,19 @@ class AutoClickerApp(ctk.CTk):
         )
         self.clear_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=4)
 
-        # ── Options button (cosmetic) ─────────────────────────────────
-        ctk.CTkButton(
+        self.clear_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=4)
+
+        # ── Options button ────────────────────────────────────────────
+        self.options_btn = ctk.CTkButton(
             frame,
             text="Options…",
             width=240,
             fg_color="transparent",
             border_width=1,
             text_color=("gray10", "gray90"),
-            command=lambda: messagebox.showinfo("Options", "No additional options."),
-        ).grid(row=5, column=0, columnspan=2, padx=12, pady=4)
+            command=self._show_options_window,
+        )
+        self.options_btn.grid(row=5, column=0, columnspan=2, padx=12, pady=4)
 
         # ── Help button (cosmetic) ────────────────────────────────────
         ctk.CTkButton(
@@ -356,8 +363,9 @@ class AutoClickerApp(ctk.CTk):
         self.y_entry.delete(0, "end")
         self.y_entry.insert(0, str(int(y)))
 
-        # Immediately append to the table
-        self._add_position()
+        # Conditionally append to the table if "Auto Append" is checked
+        if self.auto_append_var.get():
+            self._add_position()
 
         self.pick_btn.configure(text="Pick", state="normal")
         self.deiconify()  # Restore the window
@@ -446,6 +454,42 @@ class AutoClickerApp(ctk.CTk):
                 self.tree.item(item, values=vals)
             except ValueError:
                 messagebox.showerror("Input Error", "Delay must be a non-negative integer (ms).")
+
+    def _show_options_window(self):
+        """Show a dedicated options window with settings."""
+        if self._options_window is not None and self._options_window.winfo_exists():
+            self._options_window.focus()
+            return
+
+        self._options_window = ctk.CTkToplevel(self)
+        self._options_window.title("Settings")
+        self._options_window.geometry("300x200")
+        self._options_window.resizable(False, False)
+        self._options_window.attributes("-topmost", True)
+        
+        # Center relative to main window
+        x = self.winfo_x() + (self.winfo_width() // 2) - 150
+        y = self.winfo_y() + (self.winfo_height() // 2) - 100
+        self._options_window.geometry(f"+{x}+{y}")
+
+        container = ctk.CTkFrame(self._options_window, corner_radius=10)
+        container.pack(padx=20, pady=20, fill="both", expand=True)
+
+        ctk.CTkLabel(
+            container, text="Application Settings",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).pack(pady=(10, 20))
+
+        cb = ctk.CTkCheckBox(
+            container, text="Auto Append (Pick → Add)",
+            variable=self.auto_append_var
+        )
+        cb.pack(pady=10)
+
+        ctk.CTkButton(
+            container, text="Close", width=100,
+            command=self._options_window.destroy
+        ).pack(pady=(20, 10))
 
     # ==================================================================
     # Drag and Drop Reordering
