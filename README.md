@@ -65,6 +65,9 @@ Notes:
 4) Set Number of Repeats, then Start clicking or press CTRL+F3.
 5) Press CTRL+F3 again or Stop clicking to halt.
 
+<img width="1030" height="636" alt="image" src="https://github.com/user-attachments/assets/49f628e5-5dcf-4f30-8e08-bde070992002" />
+
+
 ## Inspiration
 
 The layout and workflow are inspired by Auto-Clicker by Polar 2.0, with added sequence management and JSON import/export to save and reuse click scripts.
