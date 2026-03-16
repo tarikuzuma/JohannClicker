@@ -14,8 +14,11 @@ Features:
 import threading
 import time
 import json
+import os
+import ctypes
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from PIL import Image, ImageTk
 
 import customtkinter as ctk
 from pynput import mouse, keyboard
@@ -34,12 +37,46 @@ class AutoClickerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        # ── Windows Taskbar Icon Fix ──────────────────────────────────
+        try:
+            myappid = 'tarikuzuma.autoclicker.v1'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception:
+            pass
+
         # ── Window setup ──────────────────────────────────────────────
-        self.title("Auto-Clicker by Tarikuzuma 1.0")
+        self.title("Johann-Clicker by Tarikuzuma 1.0")
         self.geometry(f"{self.WIDTH}x{self.HEIGHT}")
-        self.resizable(False, False)
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
+
+        # ── Logo / Icon setup ─────────────────────────────────────────
+        self.logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+        self.icon_path = os.path.join(os.path.dirname(__file__), "logo.ico")
+        
+        if os.path.exists(self.logo_path):
+            try:
+                # Convert PNG to ICO for better Windows taskbar support
+                pil_img = Image.open(self.logo_path)
+                if not os.path.exists(self.icon_path):
+                    pil_img.save(self.icon_path, format='ICO', sizes=[(32, 32), (48, 48), (64, 64)])
+                
+                # Set window icon
+                self.iconbitmap(self.icon_path)
+                
+                # Also keep PhotoImage for wm_iconphoto just in case
+                self.icon_photo = ImageTk.PhotoImage(pil_img)
+                self.wm_iconphoto(True, self.icon_photo)
+
+                self.logo_image = ctk.CTkImage(
+                    light_image=pil_img,
+                    dark_image=pil_img,
+                    size=(100, 100)
+                )
+            except Exception:
+                self.logo_image = None
+        else:
+            self.logo_image = None
 
         # ── Internal state ────────────────────────────────────────────
         self._clicking = False           # True while the loop is running
@@ -74,20 +111,37 @@ class AutoClickerApp(ctk.CTk):
         frame.grid(row=0, column=0, padx=(12, 6), pady=12, sticky="nsew")
         frame.grid_propagate(False)
 
+        # ── Logo Display ──────────────────────────────────────────────
+        if self.logo_image:
+            logo_label = ctk.CTkLabel(frame, image=self.logo_image, text="")
+            logo_label.grid(row=0, column=0, columnspan=2, pady=(10, 0))
+            label_row = 1
+        else:
+            label_row = 0
+
         # ── Section label ─────────────────────────────────────────────
         ctk.CTkLabel(
             frame, text="Starting Options",
             font=ctk.CTkFont(size=14, weight="bold"),
             anchor="w",
-        ).grid(row=0, column=0, columnspan=2, padx=12, pady=(12, 4), sticky="w")
+        ).grid(row=label_row, column=0, columnspan=2, padx=12, pady=(12, 4), sticky="w")
+
+        # Update grid rows for remaining items
+        repeats_row = label_row + 1
+        start_row = label_row + 2
+        stop_row = label_row + 3
+        clear_row = label_row + 4
+        append_row = label_row + 5
+        options_row = label_row + 6
+        help_row = label_row + 7
 
         # ── Number of Repeats ─────────────────────────────────────────
         ctk.CTkLabel(frame, text="Number of Repeats", anchor="w").grid(
-            row=1, column=0, padx=12, pady=(8, 4), sticky="w"
+            row=repeats_row, column=0, padx=12, pady=(8, 4), sticky="w"
         )
         self.repeats_entry = ctk.CTkEntry(frame, width=80, justify="center")
         self.repeats_entry.insert(0, "1")
-        self.repeats_entry.grid(row=1, column=1, padx=12, pady=(8, 4), sticky="e")
+        self.repeats_entry.grid(row=repeats_row, column=1, padx=12, pady=(8, 4), sticky="e")
 
         # ── Start clicking ────────────────────────────────────────────
         self.start_btn = ctk.CTkButton(
@@ -96,7 +150,7 @@ class AutoClickerApp(ctk.CTk):
             command=self._start_clicking,
             width=240,
         )
-        self.start_btn.grid(row=2, column=0, columnspan=2, padx=12, pady=(12, 4))
+        self.start_btn.grid(row=start_row, column=0, columnspan=2, padx=12, pady=(12, 4))
 
         # ── Stop clicking ─────────────────────────────────────────────
         self.stop_btn = ctk.CTkButton(
@@ -107,7 +161,7 @@ class AutoClickerApp(ctk.CTk):
             hover_color="#c9302c",
             width=240,
         )
-        self.stop_btn.grid(row=3, column=0, columnspan=2, padx=12, pady=4)
+        self.stop_btn.grid(row=stop_row, column=0, columnspan=2, padx=12, pady=4)
 
         # ── Clear All ─────────────────────────────────────────────────
         self.clear_btn = ctk.CTkButton(
@@ -119,7 +173,7 @@ class AutoClickerApp(ctk.CTk):
             text_color="white",
             width=240,
         )
-        self.clear_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=4)
+        self.clear_btn.grid(row=clear_row, column=0, columnspan=2, padx=12, pady=4)
 
         # ── Import / Export ───────────────────────────────────────────
         self.import_btn = ctk.CTkButton(
@@ -131,7 +185,7 @@ class AutoClickerApp(ctk.CTk):
             text_color="white",
             width=115,
         )
-        self.import_btn.grid(row=5, column=0, padx=(12, 5), pady=4, sticky="w")
+        self.import_btn.grid(row=append_row, column=0, padx=(12, 5), pady=4, sticky="w")
 
         self.export_btn = ctk.CTkButton(
             frame,
@@ -142,7 +196,7 @@ class AutoClickerApp(ctk.CTk):
             text_color="white",
             width=115,
         )
-        self.export_btn.grid(row=5, column=1, padx=(5, 12), pady=4, sticky="e")
+        self.export_btn.grid(row=append_row, column=1, padx=(5, 12), pady=4, sticky="e")
 
         # ── Options button ────────────────────────────────────────────
         self.options_btn = ctk.CTkButton(
@@ -154,7 +208,7 @@ class AutoClickerApp(ctk.CTk):
             text_color=("gray10", "gray90"),
             command=self._show_options_window,
         )
-        self.options_btn.grid(row=6, column=0, columnspan=2, padx=12, pady=4)
+        self.options_btn.grid(row=options_row, column=0, columnspan=2, padx=12, pady=4)
 
         # ── Help button (cosmetic) ────────────────────────────────────
         ctk.CTkButton(
@@ -171,7 +225,7 @@ class AutoClickerApp(ctk.CTk):
                 "3. Press 'Start clicking' or CTRL+F3 to begin.\n"
                 "4. Press 'Stop clicking' or CTRL+F3 to halt.",
             ),
-        ).grid(row=7, column=0, columnspan=2, padx=12, pady=(4, 12))
+        ).grid(row=help_row, column=0, columnspan=2, padx=12, pady=(4, 12))
 
     def _build_right_panel(self):
         """Build the right 'Cursor Positions' panel."""
