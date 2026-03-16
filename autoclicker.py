@@ -233,10 +233,18 @@ class AutoClickerApp(ctk.CTk):
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # ── Delete‑row context menu ───────────────────────────────────
+        # ── Context Menu ─────────────────────────────────────────────
         self._tree_menu = tk.Menu(self.tree, tearoff=0)
+        self._tree_menu.add_command(label="Move Up", command=self._move_up)
+        self._tree_menu.add_command(label="Move Down", command=self._move_down)
+        self._tree_menu.add_separator()
         self._tree_menu.add_command(label="Delete row", command=self._delete_selected_row)
         self.tree.bind("<Button-3>", self._show_tree_menu)
+
+        # ── Drag and Drop Reordering ──────────────────────────────────
+        self.tree.bind("<ButtonPress-1>", self._on_drag_start)
+        self.tree.bind("<ButtonRelease-1>", self._on_drag_drop)
+        self.tree.bind("<B1-Motion>", self._on_drag_motion)
 
     def _configure_treeview_style(self):
         """Apply a clean style to the ttk Treeview."""
@@ -250,6 +258,8 @@ class AutoClickerApp(ctk.CTk):
             rowheight=26,
             font=("Segoe UI", 10),
         )
+        # Highlight tag for dragging
+        self.tree.tag_configure("dragging", background="#e1f5fe", foreground="#0288d1")
         style.configure(
             "Treeview.Heading",
             font=("Segoe UI", 10, "bold"),
@@ -381,6 +391,61 @@ class AutoClickerApp(ctk.CTk):
         selected = self.tree.selection()
         if selected:
             self.tree.delete(selected[0])
+
+    # ==================================================================
+    # Drag and Drop Reordering
+    # ==================================================================
+
+    def _on_drag_start(self, event):
+        """Identify the row being dragged and show signifier."""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self._drag_item = item
+            self.tree.selection_set(item)
+            # Add signifier
+            self.tree.item(item, tags=("dragging",))
+            self.tree.configure(cursor="sb_v_double_arrow")
+
+    def _on_drag_motion(self, event):
+        """Provide visual feedback (selection follows mouse)."""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+
+    def _on_drag_drop(self, event):
+        """Move the dragged item, clean up signifiers."""
+        if hasattr(self, "_drag_item") and self._drag_item:
+            # Remove signifiers
+            self.tree.item(self._drag_item, tags=())
+            self.tree.configure(cursor="")
+
+            target_item = self.tree.identify_row(event.y)
+            if target_item and target_item != self._drag_item:
+                target_index = self.tree.index(target_item)
+                self.tree.move(self._drag_item, "", target_index)
+            
+            self._drag_item = None
+
+    def _move_up(self):
+        """Move the selected row up in the treeview."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+        for item in selected:
+            index = self.tree.index(item)
+            if index > 0:
+                self.tree.move(item, self.tree.parent(item), index - 1)
+
+    def _move_down(self):
+        """Move the selected row down in the treeview."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+        # Move items in reverse order when moving down to maintain correct indexing
+        for item in reversed(selected):
+            index = self.tree.index(item)
+            if index < len(self.tree.get_children()) - 1:
+                self.tree.move(item, self.tree.parent(item), index + 1)
 
     def _show_tree_menu(self, event):
         """Show the right-click context menu on the treeview."""
