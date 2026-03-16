@@ -238,6 +238,7 @@ class AutoClickerApp(ctk.CTk):
         self._tree_menu.add_command(label="Move Up", command=self._move_up)
         self._tree_menu.add_command(label="Move Down", command=self._move_down)
         self._tree_menu.add_separator()
+        self._tree_menu.add_command(label="Duplicate", command=self._duplicate_selected_row)
         self._tree_menu.add_command(label="Delete row", command=self._delete_selected_row)
         self.tree.bind("<Button-3>", self._show_tree_menu)
 
@@ -391,6 +392,23 @@ class AutoClickerApp(ctk.CTk):
         selected = self.tree.selection()
         if selected:
             self.tree.delete(selected[0])
+
+    def _duplicate_selected_row(self):
+        """Duplicate the selected row immediately below it."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+        
+        for item in selected:
+            # Get values of selected row
+            vals = self.tree.item(item, "values")
+            # Get index of selected row
+            index = self.tree.index(item)
+            # Insert new row with same values right after
+            new_item = self.tree.insert("", index + 1, values=vals)
+            # Focus the new item
+            self.tree.selection_set(new_item)
+            self.tree.see(new_item)
 
     # ==================================================================
     # Drag and Drop Reordering
