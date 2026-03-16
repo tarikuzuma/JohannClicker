@@ -34,7 +34,7 @@ class AutoClickerApp(ctk.CTk):
         super().__init__()
 
         # ── Window setup ──────────────────────────────────────────────
-        self.title("Auto-Clicker by Polar 2.0")
+        self.title("Auto-Clicker by Tarikuzuma 1.0")
         self.geometry(f"{self.WIDTH}x{self.HEIGHT}")
         self.resizable(False, False)
         ctk.set_appearance_mode("light")
@@ -44,6 +44,8 @@ class AutoClickerApp(ctk.CTk):
         self._clicking = False           # True while the loop is running
         self._stop_event = threading.Event()  # Signals the loop to stop
         self._pick_listener = None       # pynput mouse listener for Pick
+        self._pick_kbd_listener = None   # pynput keyboard listener for Pick
+        self._pick_overlay = None       # Tooltip window during Pick
         self._hotkey_listener = None     # pynput global hotkey listener
 
         # ── Build the UI ──────────────────────────────────────────────
@@ -271,18 +273,70 @@ class AutoClickerApp(ctk.CTk):
         self.after(400, self._start_pick_listener)
 
     def _start_pick_listener(self):
-        """Begin listening for a mouse click to capture coordinates."""
+        """Begin listening for mouse move/click and Escape key to capture coordinates."""
+        # Create overlay
+        self._pick_overlay = tk.Toplevel(self)
+        self._pick_overlay.overrideredirect(True)
+        self._pick_overlay.attributes("-topmost", True)
+        self._pick_overlay.attributes("-alpha", 0.9)
+        self._overlay_label = tk.Label(
+            self._pick_overlay,
+            text="X: 0, Y: 0\nClick or ESC to pick",
+            bg="black",
+            fg="white",
+            padx=10,
+            pady=5,
+            font=("Segoe UI", 10, "bold")
+        )
+        self._overlay_label.pack()
+
+        def on_move(x, y):
+            # Update overlay position and text
+            self.after(0, lambda: self._update_overlay(x, y))
+
         def on_click(x, y, button, pressed):
-            if pressed:
+            if pressed and button == mouse.Button.left:
                 # Schedule UI update on the main thread
                 self.after(0, lambda: self._finish_pick(x, y))
                 return False  # Stop listener
 
-        self._pick_listener = mouse.Listener(on_click=on_click)
+        def on_press(key):
+            if key == keyboard.Key.esc:
+                # Get current mouse position since pynput mouse.Controller doesn't track it here easily
+                # but we can just use the last known from on_move or a fresh controller
+                ctrl = mouse.Controller()
+                cur_x, cur_y = ctrl.position
+                self.after(0, lambda: self._finish_pick(cur_x, cur_y))
+                return False # Stop listener
+
+        self._pick_listener = mouse.Listener(on_move=on_move, on_click=on_click)
+        self._pick_kbd_listener = keyboard.Listener(on_press=on_press)
+        
         self._pick_listener.start()
+        self._pick_kbd_listener.start()
+
+    def _update_overlay(self, x, y):
+        """Update the overlay window's position and text."""
+        if self._pick_overlay and self._pick_overlay.winfo_exists():
+            self._overlay_label.configure(text=f"X: {int(x)}, Y: {int(y)}\nClick or ESC to pick")
+            # Position offset so it doesn't block the click
+            self._pick_overlay.geometry(f"+{int(x)+20}+{int(y)+20}")
 
     def _finish_pick(self, x: int, y: int):
-        """Fill X/Y entries with captured coordinates and restore window."""
+        """Fill X/Y entries, clean up overlay/listeners, and restore window."""
+        # Stop listeners if they are still running
+        if self._pick_listener:
+            self._pick_listener.stop()
+            self._pick_listener = None
+        if self._pick_kbd_listener:
+            self._pick_kbd_listener.stop()
+            self._pick_kbd_listener = None
+
+        # Destroy overlay
+        if self._pick_overlay:
+            self._pick_overlay.destroy()
+            self._pick_overlay = None
+
         self.x_entry.delete(0, "end")
         self.x_entry.insert(0, str(int(x)))
         self.y_entry.delete(0, "end")
