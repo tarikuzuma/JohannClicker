@@ -13,8 +13,9 @@ Features:
 
 import threading
 import time
+import json
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 
 import customtkinter as ctk
 from pynput import mouse, keyboard
@@ -120,7 +121,28 @@ class AutoClickerApp(ctk.CTk):
         )
         self.clear_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=4)
 
-        self.clear_btn.grid(row=4, column=0, columnspan=2, padx=12, pady=4)
+        # ── Import / Export ───────────────────────────────────────────
+        self.import_btn = ctk.CTkButton(
+            frame,
+            text="Import JSON",
+            command=self._import_from_json,
+            fg_color="#5bc0de",
+            hover_color="#31b0d5",
+            text_color="white",
+            width=115,
+        )
+        self.import_btn.grid(row=5, column=0, padx=(12, 5), pady=4, sticky="w")
+
+        self.export_btn = ctk.CTkButton(
+            frame,
+            text="Export JSON",
+            command=self._export_to_json,
+            fg_color="#5bc0de",
+            hover_color="#31b0d5",
+            text_color="white",
+            width=115,
+        )
+        self.export_btn.grid(row=5, column=1, padx=(5, 12), pady=4, sticky="e")
 
         # ── Options button ────────────────────────────────────────────
         self.options_btn = ctk.CTkButton(
@@ -132,7 +154,7 @@ class AutoClickerApp(ctk.CTk):
             text_color=("gray10", "gray90"),
             command=self._show_options_window,
         )
-        self.options_btn.grid(row=5, column=0, columnspan=2, padx=12, pady=4)
+        self.options_btn.grid(row=6, column=0, columnspan=2, padx=12, pady=4)
 
         # ── Help button (cosmetic) ────────────────────────────────────
         ctk.CTkButton(
@@ -149,7 +171,7 @@ class AutoClickerApp(ctk.CTk):
                 "3. Press 'Start clicking' or CTRL+F3 to begin.\n"
                 "4. Press 'Stop clicking' or CTRL+F3 to halt.",
             ),
-        ).grid(row=6, column=0, columnspan=2, padx=12, pady=(4, 12))
+        ).grid(row=7, column=0, columnspan=2, padx=12, pady=(4, 12))
 
     def _build_right_panel(self):
         """Build the right 'Cursor Positions' panel."""
@@ -490,6 +512,68 @@ class AutoClickerApp(ctk.CTk):
             container, text="Close", width=100,
             command=self._options_window.destroy
         ).pack(pady=(20, 10))
+
+    def _export_to_json(self):
+        """Export the current click sequence to a JSON file."""
+        positions = []
+        for item_id in self.tree.get_children():
+            vals = self.tree.item(item_id, "values")
+            positions.append({
+                "x": int(vals[0]),
+                "y": int(vals[1]),
+                "lr": vals[2],
+                "delay": int(vals[3])
+            })
+        
+        if not positions:
+            messagebox.showwarning("Export", "No positions to export.")
+            return
+
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json")],
+            title="Export Click Sequence"
+        )
+        
+        if filename:
+            try:
+                with open(filename, 'w') as f:
+                    json.dump(positions, f, indent=4)
+                messagebox.showinfo("Export", f"Sequence exported successfully to {filename}")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Failed to save file: {e}")
+
+    def _import_from_json(self):
+        """Import a click sequence from a JSON file."""
+        filename = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json")],
+            title="Import Click Sequence"
+        )
+        
+        if filename:
+            try:
+                with open(filename, 'r') as f:
+                    positions = json.load(f)
+                
+                if not isinstance(positions, list):
+                    raise ValueError("Invalid JSON format: expected a list of clicks.")
+
+                # Ask user if they want to clear current sequence
+                if self.tree.get_children():
+                    if messagebox.askyesno("Import", "Clear existing sequence before importing?"):
+                        self._clear_all()
+
+                for pos in positions:
+                    self.tree.insert("", "end", values=(
+                        pos.get("x", 0),
+                        pos.get("y", 0),
+                        pos.get("lr", "L"),
+                        pos.get("delay", 600)
+                    ))
+                
+                messagebox.showinfo("Import", "Sequence imported successfully.")
+            except Exception as e:
+                messagebox.showerror("Import Error", f"Failed to load file: {e}")
 
     # ==================================================================
     # Drag and Drop Reordering
